@@ -1,25 +1,23 @@
 import React, { useState } from "react";
-import { Form, Button, Alert } from "react-bootstrap";
-// Imports the useMutation hook from the @apollo-client
+import { useParams } from "react-router-dom";
 import { useMutation } from "@apollo/client";
-// Imports the ADD_USER mutation from the mutations.js file in the client side utils folder
+import { Form, Button, Alert } from "react-bootstrap";
 import { ADD_USER } from "../utils/mutations";
 import Auth from "../utils/auth";
 
+// import { createUser } from '../utils/API';
+//ADD_USER mutation funcionality
 const SignupForm = () => {
-  // set initial form state
+  // start with fields empty
   const [userFormData, setUserFormData] = useState({
     username: "",
     email: "",
     password: "",
   });
-  // set state for form validation
   const [validated] = useState(false);
-  // set state for alert
   const [showAlert, setShowAlert] = useState(false);
 
-  // Sets the ADD_USER mutation to the addUser function and also allows use of error reporting
-  const [addUser, { error }] = useMutation(ADD_USER);
+  const [addUser] = useMutation(ADD_USER);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -29,25 +27,18 @@ const SignupForm = () => {
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
-    // Checks if form has everything (as per react-bootstrap docs)
-    const form = event.currentTarget;
-    if (form.checkValidity() === false) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-
     try {
-      // Sets the addUser request sent to the apolloServer ad the veriable data
-      const { data } = await addUser({ variables: userFormData });
+      const response = await addUser({
+        variables: { ...userFormData },
+      });
 
-      if (error) {
-        console.log(error.message);
+      if (!response.ok) {
+        throw new Error("Could not add new user");
       }
 
-      // Takes the token assigned to the user when created and logges the user in
-      Auth.login(data.addUser.token);
+      const { token } = await response.json();
+      Auth.login(token);
     } catch (err) {
-      console.error(err);
       setShowAlert(true);
     }
 
@@ -72,7 +63,7 @@ const SignupForm = () => {
           Something went wrong with your signup!
         </Alert>
 
-        <Form.Group>
+        <Form.Group className="mb-3">
           <Form.Label htmlFor="username">Username</Form.Label>
           <Form.Control
             type="text"
@@ -87,7 +78,7 @@ const SignupForm = () => {
           </Form.Control.Feedback>
         </Form.Group>
 
-        <Form.Group>
+        <Form.Group className="mb-3">
           <Form.Label htmlFor="email">Email</Form.Label>
           <Form.Control
             type="email"
@@ -102,7 +93,7 @@ const SignupForm = () => {
           </Form.Control.Feedback>
         </Form.Group>
 
-        <Form.Group>
+        <Form.Group className="mb-3">
           <Form.Label htmlFor="password">Password</Form.Label>
           <Form.Control
             type="password"

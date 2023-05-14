@@ -1,29 +1,32 @@
 // see SignupForm.js for comments
 import React, { useState } from "react";
 import { Form, Button, Alert } from "react-bootstrap";
-// Imports the useMutation hook from the @apollo-client so that mutations can be called
 import { useMutation } from "@apollo/client";
-// Imports the LOGIN_USER mutation from the mutations.js file in the client side utils folder
+
+// import { loginUser } from '../utils/API';
+//'LOGIN_USER' mutation funcionality
 import { LOGIN_USER } from "../utils/mutations";
 import Auth from "../utils/auth";
 
 const LoginForm = () => {
-  const [userFormData, setUserFormData] = useState({ email: "", password: "" });
+  // start with fields empty
+  const [loginFormData, setLoginFormData] = useState({
+    email: "",
+    password: "",
+  });
   const [validated] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
 
-  // Assigns the LOGIN_USER mutation to the loginUser function and brings in the ability to error report
-  const [loginUser, { error }] = useMutation(LOGIN_USER);
+  const [loginUser] = useMutation(LOGIN_USER);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
-    setUserFormData({ ...userFormData, [name]: value });
+    setLoginFormData({ ...loginFormData, [name]: value });
   };
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
-    // check if form has everything (as per react-bootstrap docs)
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
       event.preventDefault();
@@ -31,21 +34,24 @@ const LoginForm = () => {
     }
 
     try {
-      // Passes the data supplied by the user into the loginUser function and assigns the response to the variable data
-      const { data } = await loginUser({ variables: { ...userFormData } });
+      const response = await loginUser({
+        variables: { ...loginFormData },
+      });
+      //'LOGIN_USER' mutation funcionality
 
-      // Use the token assigned to the user to log the user in
-      Auth.login(data.login.token);
-
-      if (error) {
-        console.log(error.message);
+      if (!response.ok) {
+        throw new Error("something went wrong!");
       }
+
+      const { token, user } = await response.json();
+      console.log(user);
+      Auth.login(token);
     } catch (err) {
       console.error(err);
       setShowAlert(true);
     }
 
-    setUserFormData({
+    setLoginFormData({
       username: "",
       email: "",
       password: "",
@@ -63,14 +69,14 @@ const LoginForm = () => {
         >
           Something went wrong with your login credentials!
         </Alert>
-        <Form.Group>
+        <Form.Group className="mb-3">
           <Form.Label htmlFor="email">Email</Form.Label>
           <Form.Control
             type="text"
             placeholder="Your email"
             name="email"
             onChange={handleInputChange}
-            value={userFormData.email}
+            value={loginFormData.email}
             required
           />
           <Form.Control.Feedback type="invalid">
@@ -78,14 +84,14 @@ const LoginForm = () => {
           </Form.Control.Feedback>
         </Form.Group>
 
-        <Form.Group>
+        <Form.Group className="mb-3">
           <Form.Label htmlFor="password">Password</Form.Label>
           <Form.Control
             type="password"
             placeholder="Your password"
             name="password"
             onChange={handleInputChange}
-            value={userFormData.password}
+            value={loginFormData.password}
             required
           />
           <Form.Control.Feedback type="invalid">
@@ -93,7 +99,7 @@ const LoginForm = () => {
           </Form.Control.Feedback>
         </Form.Group>
         <Button
-          disabled={!(userFormData.email && userFormData.password)}
+          disabled={!(loginFormData.email && loginFormData.password)}
           type="submit"
           variant="success"
         >
@@ -103,5 +109,4 @@ const LoginForm = () => {
     </>
   );
 };
-
 export default LoginForm;
