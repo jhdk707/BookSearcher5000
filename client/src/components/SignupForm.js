@@ -1,23 +1,32 @@
-import React, { useState } from "react";
-import { useParams } from "react-router-dom";
-import { useMutation } from "@apollo/client";
+import React, { useState, useEffect } from "react";
 import { Form, Button, Alert } from "react-bootstrap";
+import { useMutation } from "@apollo/client";
+
 import { ADD_USER } from "../utils/mutations";
 import Auth from "../utils/auth";
 
-// import { createUser } from '../utils/API';
-//ADD_USER mutation funcionality
 const SignupForm = () => {
-  // start with fields empty
+  // set initial form state
   const [userFormData, setUserFormData] = useState({
     username: "",
     email: "",
     password: "",
   });
+  // set state for form validation
   const [validated] = useState(false);
+  // set state for alert
   const [showAlert, setShowAlert] = useState(false);
 
-  const [addUser] = useMutation(ADD_USER);
+  const [addUser, { error }] = useMutation(ADD_USER);
+
+  useEffect(() => {
+    if (error) {
+      console.log(error);
+      setShowAlert(true);
+    } else {
+      setShowAlert(false);
+    }
+  }, [error]);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -26,20 +35,21 @@ const SignupForm = () => {
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
+    console.log(userFormData);
 
+    // check if form has everything (as per react-bootstrap docs)
+    const form = event.currentTarget;
+    if (form.checkValidity() === false) {
+      event.stopPropagation();
+    }
     try {
-      const response = await addUser({
+      const { data } = await addUser({
         variables: { ...userFormData },
       });
-
-      if (!response.ok) {
-        throw new Error("Could not add new user");
-      }
-
-      const { token } = await response.json();
-      Auth.login(token);
+      console.log(data);
+      Auth.login(data.addUser.token);
     } catch (err) {
-      setShowAlert(true);
+      console.error(err);
     }
 
     setUserFormData({

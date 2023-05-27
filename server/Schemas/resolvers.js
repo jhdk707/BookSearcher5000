@@ -1,56 +1,85 @@
+// resolvers.js: Define the query and mutation functionality to work with the Mongoose models.
 const { AuthenticationError } = require("apollo-server-express");
-const { User } = require("../models");
+const { User, Book } = require("../models");
 const { signToken } = require("../utils/auth");
+const { sign } = require("jsonwebtoken");
+
+// HINT
+// Use the functionality in the user-controller.js as a guide.
 
 const resolvers = {
   Query: {
     me: async (parent, args, context) => {
       if (context.user) {
-        const userData = await User.findOne({ _id: context.user._id });
-        return userData;
+        return User.findOne({ _id: context.user._id });
       }
-      throw new AuthenticationError("User is NOT logged in.");
+      throw new AuthenticationError("You need to be logged in!");
     },
   },
 
   Mutation: {
-    login: async (parent, { email, password }) => {
-      const user = await User.findOne({ email });
-      if (!user) {
-        throw new AuthenticationError("No user with this email found...");
-      }
-      const token = signToken(user);
-      return { token, user };
-    },
-    //create user
+    // Create user
     addUser: async (parent, args) => {
-      await console.log("resolver test");
-      console.log(args);
-      const user = await User.create({ username, email, password });
+      const user = await User.create(args);
       const token = signToken(user);
       return { token, user };
     },
-    //add book to user's list
+    loginUser: async (parent, { email, password }) => {
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        throw new AuthenticationError("No user found with this email address");
+      }
+
+      const correctPw = await user.isCorrectPassword(password);
+
+      if (!correctPw) {
+        throw new AuthenticationError("Incorrect credentials");
+      }
+
+      const token = signToken(user);
+      return { token, user };
+    },
+
     saveBook: async (parent, { bookData }, context) => {
       if (context.user) {
-        return User.findOneAndUpdate(
+        const user = await User.findOneAndUpdate(
           { _id: context.user._id },
-          { $addToSet: { savedBooks: bookData } },
-          { new: true }
+          {
+            $addToSet: {
+              // push to savedbooks array (input holds all of the book info)
+              savedBooks: bookData,
+            },
+          },
+          {
+            new: true,
+            runValidators: true,
+          }
         );
+        return user;
       }
-      throw new AuthenticationError("You need to log in");
+
+      throw new AuthenticationError("You need to be logged in!");
     },
-    //remove book from user's list
-    deleteBook: async (parent, { bookId }, context) => {
+
+    // cant perform query's on a schema
+    removeBook: async (parent, { bookId }, context) => {
       if (context.user) {
-        return User.findOneAndUpdate(
-          { _id: contex.user._id },
-          { $pull: { savedBooks: context.bookId } },
-          { new: true }
+        const user = await User.findOneAndUpdate(
+          { _id: context.user._id },
+
+          { $pull: { savedBooks: { bookId } } },
+
+          {
+            new: true,
+            runValidators: true,
+          }
         );
+
+        return user;
       }
-      throw new AuthenticationError("You need to log in");
+
+      throw new AuthenticationError("You need to be logged in!");
     },
   },
 };
